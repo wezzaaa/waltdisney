@@ -53,6 +53,7 @@ fun HomeScreen(
     var universes by remember { mutableStateOf(listOf<Pair<String, Universe>>()) }
     var films by remember { mutableStateOf(listOf<Pair<String, Film>>()) }
     var selectedUniverseId by remember { mutableStateOf<String?>(null) }
+    var userStatuses by remember { mutableStateOf(mapOf<String, String>()) }
 
     val auth = FirebaseAuth.getInstance()
     val uid = auth.currentUser?.uid
@@ -60,6 +61,28 @@ fun HomeScreen(
     val db = FirebaseDatabase
         .getInstance("https://walt-disney-708e2-default-rtdb.europe-west1.firebasedatabase.app")
         .reference
+
+    fun loadUserStatuses() {
+        if (uid == null) return
+
+        db.child("userFilmStatus").child(uid).get()
+            .addOnSuccessListener { snapshot ->
+                val tempMap = mutableMapOf<String, String>()
+
+                for (filmSnapshot in snapshot.children) {
+                    val filmId = filmSnapshot.key.orEmpty()
+                    val status = filmSnapshot.child("status").getValue(String::class.java).orEmpty()
+                    if (filmId.isNotBlank() && status.isNotBlank()) {
+                        tempMap[filmId] = status
+                    }
+                }
+
+                userStatuses = tempMap
+            }
+            .addOnFailureListener { error ->
+                Log.e("FIREBASE_TEST", "User statuses read failed", error)
+            }
+    }
 
     LaunchedEffect(Unit) {
         if (uid != null) {
@@ -101,6 +124,8 @@ fun HomeScreen(
             .addOnFailureListener { error ->
                 Log.e("FIREBASE_TEST", "Films read failed", error)
             }
+
+        loadUserStatuses()
     }
 
     val filteredFilms = if (selectedUniverseId == null) {
@@ -115,12 +140,20 @@ fun HomeScreen(
             return
         }
 
-        db.child("userFilmStatus")
-            .child(uid)
-            .child(filmId)
-            .child("status")
-            .setValue(status)
+        val updates = mutableMapOf<String, Any?>()
+        updates["userFilmStatus/$uid/$filmId/status"] = status
+
+        if (status == "want_to_get_rid") {
+            updates["ownersGettingRid/$filmId/$uid"] = true
+        } else {
+            updates["ownersGettingRid/$filmId/$uid"] = null
+        }
+
+        db.updateChildren(updates)
             .addOnSuccessListener {
+                userStatuses = userStatuses.toMutableMap().apply {
+                    this[filmId] = status
+                }
                 Toast.makeText(context, "Status saved: $status", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { error ->
@@ -186,6 +219,8 @@ fun HomeScreen(
                 }
 
                 items(filteredFilms) { (filmId, film) ->
+                    val currentStatus = userStatuses[filmId].orEmpty()
+
                     Card {
                         Text(
                             text = film.title,
@@ -198,6 +233,14 @@ fun HomeScreen(
                         )
                         Text(
                             text = "Release date: ${film.releaseDate}",
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                        )
+                        Text(
+                            text = if (currentStatus.isNotBlank()) {
+                                "Current status: $currentStatus"
+                            } else {
+                                "Current status: none"
+                            },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                         )
 
