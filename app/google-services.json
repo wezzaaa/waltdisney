@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "215985189372",
+    "project_id": "walt-disney-708e2",
+    "storage_bucket": "walt-disney-708e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:215985189372:android:0a029bde08dbc50682c279",
+        "android_client_info": {
+          "package_name": "fr.isen.sahartayssir.waltdisney"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYKOeB2rY1jgoJABAYpq8x_nNaW0QdOKY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
