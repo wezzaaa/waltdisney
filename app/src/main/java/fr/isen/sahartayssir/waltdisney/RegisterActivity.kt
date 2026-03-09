@@ -29,6 +29,10 @@ class RegisterActivity : ComponentActivity() {
                 onRegisterSuccess = {
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
+                },
+                onGoToLogin = {
+                    startActivity(Intent(this, LoginActivity::class.java))
+                    finish()
                 }
             )
         }
@@ -37,7 +41,8 @@ class RegisterActivity : ComponentActivity() {
 
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit
+    onRegisterSuccess: () -> Unit,
+    onGoToLogin: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -119,6 +124,13 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Create account")
+        }
+
+        Button(
+            onClick = onGoToLogin,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Go to Login")
         }
     }
 }

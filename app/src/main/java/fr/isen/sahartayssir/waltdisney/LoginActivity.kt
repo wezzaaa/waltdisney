@@ -28,6 +28,9 @@ class LoginActivity : ComponentActivity() {
                 onLoginSuccess = {
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
+                },
+                onGoToRegister = {
+                    startActivity(Intent(this, RegisterActivity::class.java))
                 }
             )
         }
@@ -36,7 +39,8 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onGoToRegister: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -89,6 +93,13 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")
+        }
+
+        Button(
+            onClick = onGoToRegister,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Go to Register")
         }
     }
 }
