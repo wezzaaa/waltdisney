@@ -4,6 +4,8 @@ import android.content.Intent
 
 import android.os.Bundle
 
+import android.util.Patterns
+
 import android.widget.Toast
 
 import androidx.activity.ComponentActivity
@@ -134,11 +136,31 @@ fun LoginScreen(
 
             onClick = {
 
-                if (email.isBlank() || password.isBlank()) {
+                when {
 
-                    Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
+                    email.isBlank() || password.isBlank() -> {
 
-                    return@Button
+                        Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
+
+                        return@Button
+
+                    }
+
+                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+
+                        Toast.makeText(context, "Invalid email format", Toast.LENGTH_SHORT).show()
+
+                        return@Button
+
+                    }
+
+                    password.length < 6 -> {
+
+                        Toast.makeText(context, "Password must contain at least 6 characters", Toast.LENGTH_SHORT).show()
+
+                        return@Button
+
+                    }
 
                 }
 

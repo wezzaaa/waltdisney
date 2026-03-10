@@ -2,6 +2,7 @@ package fr.isen.sahartayssir.waltdisney
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -81,9 +82,23 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank() || displayName.isBlank()) {
-                    Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
-                    return@Button
+                when {
+                    displayName.isBlank() || email.isBlank() || password.isBlank() -> {
+                        Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    displayName.length < 2 -> {
+                        Toast.makeText(context, "Display name is too short", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                        Toast.makeText(context, "Invalid email format", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    password.length < 6 -> {
+                        Toast.makeText(context, "Password must contain at least 6 characters", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
                 }
 
                 val auth = FirebaseAuth.getInstance()
