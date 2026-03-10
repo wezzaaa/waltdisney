@@ -14,8 +14,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Waltdisney"
         tools:targetApi="31">
+
+        <activity android:name=".FilmDetailActivity" />
         <activity android:name=".ProfileActivity" />
         <activity android:name=".RegisterActivity" />
+
         <activity
             android:name=".LoginActivity"
             android:exported="true"
