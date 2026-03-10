@@ -317,18 +317,27 @@ fun HomeScreen(
                         )
                     }
 
-                    items(universes) { (universeId, universe) ->
-                        Card(
-                            modifier = Modifier.clickable {
-                                selectedUniverseId = universeId
-                                showOnlyMyStatuses = false
-                            }
-                        ) {
+                    if (universes.isEmpty()) {
+                        item {
                             Text(
-                                text = universe.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(16.dp)
+                                text = "No universes available.",
+                                modifier = Modifier.padding(top = 8.dp)
                             )
+                        }
+                    } else {
+                        items(universes) { (universeId, universe) ->
+                            Card(
+                                modifier = Modifier.clickable {
+                                    selectedUniverseId = universeId
+                                    showOnlyMyStatuses = false
+                                }
+                            ) {
+                                Text(
+                                    text = universe.name,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -342,77 +351,90 @@ fun HomeScreen(
                         )
                     }
 
-                    items(filteredFilms) { (filmId, film) ->
-                        val currentStatus = userStatuses[filmId].orEmpty()
-
-                        Card {
+                    if (filteredFilms.isEmpty()) {
+                        item {
                             Text(
-                                text = film.title,
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp)
-                            )
-
-                            Text(
-                                text = if (currentStatus.isNotBlank()) {
-                                    "Current status: $currentStatus"
+                                text = if (showOnlyMyStatuses) {
+                                    "You have not marked any films yet."
                                 } else {
-                                    "Current status: none"
+                                    "No films found for this universe."
                                 },
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                                modifier = Modifier.padding(top = 8.dp)
                             )
+                        }
+                    } else {
+                        items(filteredFilms) { (filmId, film) ->
+                            val currentStatus = userStatuses[filmId].orEmpty()
 
-                            Button(
-                                onClick = { onOpenFilmDetail(filmId) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text("View details")
-                            }
+                            Card {
+                                Text(
+                                    text = film.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp)
+                                )
 
-                            Button(
-                                onClick = { saveFilmStatus(filmId, "watched") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text("Watched")
-                            }
+                                Text(
+                                    text = if (currentStatus.isNotBlank()) {
+                                        "Current status: $currentStatus"
+                                    } else {
+                                        "Current status: none"
+                                    },
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                                )
 
-                            Button(
-                                onClick = { saveFilmStatus(filmId, "want_to_watch") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text("Want to watch")
-                            }
+                                Button(
+                                    onClick = { onOpenFilmDetail(filmId) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text("View details")
+                                }
 
-                            Button(
-                                onClick = { saveFilmStatus(filmId, "own_dvd") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text("Own DVD")
-                            }
+                                Button(
+                                    onClick = { saveFilmStatus(filmId, "watched") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Watched")
+                                }
 
-                            Button(
-                                onClick = { saveFilmStatus(filmId, "want_to_get_rid") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text("Want to get rid")
-                            }
+                                Button(
+                                    onClick = { saveFilmStatus(filmId, "want_to_watch") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Want to watch")
+                                }
 
-                            Button(
-                                onClick = { deleteFilmStatus(filmId) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
-                            ) {
-                                Text("Delete my status")
+                                Button(
+                                    onClick = { saveFilmStatus(filmId, "own_dvd") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Own DVD")
+                                }
+
+                                Button(
+                                    onClick = { saveFilmStatus(filmId, "want_to_get_rid") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Want to get rid")
+                                }
+
+                                Button(
+                                    onClick = { deleteFilmStatus(filmId) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
+                                ) {
+                                    Text("Delete my status")
+                                }
                             }
                         }
                     }
