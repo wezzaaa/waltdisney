@@ -29,13 +29,19 @@ class FilmDetailActivity : ComponentActivity() {
         val filmId = intent.getStringExtra("filmId").orEmpty()
 
         setContent {
-            FilmDetailScreen(filmId = filmId)
+            FilmDetailScreen(
+                filmId = filmId,
+                onBack = { finish() }
+            )
         }
     }
 }
 
 @Composable
-fun FilmDetailScreen(filmId: String) {
+fun FilmDetailScreen(
+    filmId: String,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
 
     var film by remember { mutableStateOf(Film()) }
@@ -137,6 +143,13 @@ fun FilmDetailScreen(filmId: String) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back")
+        }
+
         Text(
             text = "Film Detail",
             style = MaterialTheme.typography.headlineMedium
