@@ -54,6 +54,7 @@ fun HomeScreen(
     var films by remember { mutableStateOf(listOf<Pair<String, Film>>()) }
     var selectedUniverseId by remember { mutableStateOf<String?>(null) }
     var userStatuses by remember { mutableStateOf(mapOf<String, String>()) }
+    var ownersByFilm by remember { mutableStateOf(mapOf<String, List<String>>()) }
 
     val auth = FirebaseAuth.getInstance()
     val uid = auth.currentUser?.uid
@@ -81,6 +82,57 @@ fun HomeScreen(
             }
             .addOnFailureListener { error ->
                 Log.e("FIREBASE_TEST", "User statuses read failed", error)
+            }
+    }
+
+    fun loadOwnersGettingRid() {
+        db.child("ownersGettingRid").get()
+            .addOnSuccessListener { snapshot ->
+                val result = mutableMapOf<String, List<String>>()
+
+                for (filmSnapshot in snapshot.children) {
+                    val filmId = filmSnapshot.key.orEmpty()
+                    val uidList = filmSnapshot.children.mapNotNull { it.key }
+
+                    if (filmId.isBlank() || uidList.isEmpty()) continue
+
+                    val names = mutableListOf<String>()
+                    var processed = 0
+
+                    for (ownerUid in uidList) {
+                        db.child("users").child(ownerUid).child("displayName").get()
+                            .addOnSuccessListener { nameSnapshot ->
+                                val name = nameSnapshot.getValue(String::class.java).orEmpty()
+                                names.add(if (name.isNotBlank()) name else ownerUid)
+                                processed++
+
+                                if (processed == uidList.size) {
+                                    result[filmId] = names
+                                    ownersByFilm = ownersByFilm.toMutableMap().apply {
+                                        put(filmId, names)
+                                    }
+                                }
+                            }
+                            .addOnFailureListener {
+                                names.add(ownerUid)
+                                processed++
+
+                                if (processed == uidList.size) {
+                                    result[filmId] = names
+                                    ownersByFilm = ownersByFilm.toMutableMap().apply {
+                                        put(filmId, names)
+                                    }
+                                }
+                            }
+                    }
+                }
+
+                if (!snapshot.hasChildren()) {
+                    ownersByFilm = emptyMap()
+                }
+            }
+            .addOnFailureListener { error ->
+                Log.e("FIREBASE_TEST", "Owners getting rid read failed", error)
             }
     }
 
@@ -126,6 +178,7 @@ fun HomeScreen(
             }
 
         loadUserStatuses()
+        loadOwnersGettingRid()
     }
 
     val filteredFilms = if (selectedUniverseId == null) {
@@ -154,6 +207,7 @@ fun HomeScreen(
                 userStatuses = userStatuses.toMutableMap().apply {
                     this[filmId] = status
                 }
+                loadOwnersGettingRid()
                 Toast.makeText(context, "Status saved: $status", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { error ->
@@ -220,6 +274,7 @@ fun HomeScreen(
 
                 items(filteredFilms) { (filmId, film) ->
                     val currentStatus = userStatuses[filmId].orEmpty()
+                    val owners = ownersByFilm[filmId].orEmpty()
 
                     Card {
                         Text(
@@ -240,6 +295,14 @@ fun HomeScreen(
                                 "Current status: $currentStatus"
                             } else {
                                 "Current status: none"
+                            },
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                        )
+                        Text(
+                            text = if (owners.isNotEmpty()) {
+                                "Users who want to get rid of it: ${owners.joinToString(", ")}"
+                            } else {
+                                "Users who want to get rid of it: none"
                             },
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                         )
