@@ -66,6 +66,7 @@ fun HomeScreen(
     var userStatuses by remember { mutableStateOf(mapOf<String, String>()) }
     var ownersByFilm by remember { mutableStateOf(mapOf<String, List<String>>()) }
     var showOnlyMyStatuses by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
 
     val auth = FirebaseAuth.getInstance()
     val uid = auth.currentUser?.uid
@@ -80,6 +81,7 @@ fun HomeScreen(
         db.child("userFilmStatus").child(uid).get()
             .addOnSuccessListener { snapshot ->
                 val tempMap = mutableMapOf<String, String>()
+
                 for (filmSnapshot in snapshot.children) {
                     val filmId = filmSnapshot.key.orEmpty()
                     val status = filmSnapshot.child("status").getValue(String::class.java).orEmpty()
@@ -87,6 +89,7 @@ fun HomeScreen(
                         tempMap[filmId] = status
                     }
                 }
+
                 userStatuses = tempMap
             }
             .addOnFailureListener { error ->
@@ -143,6 +146,8 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        isLoading = true
+
         if (uid != null) {
             db.child("users").child(uid).child("displayName").get()
                 .addOnSuccessListener { snapshot ->
@@ -163,22 +168,31 @@ fun HomeScreen(
                     }
                 }
                 universes = tempList
-            }
 
-        db.child("films").get()
-            .addOnSuccessListener { snapshot ->
-                val tempList = mutableListOf<Pair<String, Film>>()
-                for (child in snapshot.children) {
-                    val film = child.getValue(Film::class.java)
-                    if (film != null) {
-                        tempList.add(child.key.orEmpty() to film)
+                db.child("films").get()
+                    .addOnSuccessListener { filmSnapshot ->
+                        val tempFilms = mutableListOf<Pair<String, Film>>()
+                        for (child in filmSnapshot.children) {
+                            val film = child.getValue(Film::class.java)
+                            if (film != null) {
+                                tempFilms.add(child.key.orEmpty() to film)
+                            }
+                        }
+                        films = tempFilms
+
+                        loadUserStatuses()
+                        loadOwnersGettingRid()
+                        isLoading = false
                     }
-                }
-                films = tempList
+                    .addOnFailureListener { error ->
+                        Log.e("FIREBASE_TEST", "Films read failed", error)
+                        isLoading = false
+                    }
             }
-
-        loadUserStatuses()
-        loadOwnersGettingRid()
+            .addOnFailureListener { error ->
+                Log.e("FIREBASE_TEST", "Universes read failed", error)
+                isLoading = false
+            }
     }
 
     val filteredFilms = when {
@@ -211,7 +225,11 @@ fun HomeScreen(
                 Toast.makeText(context, "Status saved: $status", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { error ->
-                Toast.makeText(context, error.message ?: "Save failed", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    error.message ?: "Save failed",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
@@ -234,145 +252,168 @@ fun HomeScreen(
                 Toast.makeText(context, "Status deleted", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { error ->
-                Toast.makeText(context, error.message ?: "Delete failed", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    error.message ?: "Delete failed",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    text = if (displayName.isNotBlank()) "Welcome, $displayName" else "Welcome",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-            }
-
-            item { Button(onClick = onOpenProfile) { Text("Profile") } }
-            item { Button(onClick = onLogout) { Text("Logout") } }
-
-            item {
-                Button(
-                    onClick = {
-                        showOnlyMyStatuses = !showOnlyMyStatuses
-                        if (showOnlyMyStatuses) selectedUniverseId = null
-                    }
-                ) {
-                    Text(if (showOnlyMyStatuses) "Back to universes" else "My statuses")
-                }
-            }
-
-            if (!showOnlyMyStatuses) {
+        if (isLoading) {
+            Text(
+                text = "Loading...",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(innerPadding).padding(24.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 item {
                     Text(
-                        text = "Universes",
+                        text = if (displayName.isNotBlank()) "Welcome, $displayName" else "Welcome",
                         style = MaterialTheme.typography.headlineMedium
                     )
                 }
 
-                items(universes) { (universeId, universe) ->
-                    Card(
-                        modifier = Modifier.clickable {
-                            selectedUniverseId = universeId
-                            showOnlyMyStatuses = false
-                        }
-                    ) {
-                        Text(
-                            text = universe.name,
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                item {
+                    Button(onClick = onOpenProfile) {
+                        Text("Profile")
                     }
                 }
-            }
 
-            if (showOnlyMyStatuses || selectedUniverseId != null) {
                 item {
-                    Text(
-                        text = if (showOnlyMyStatuses) "My films" else "Films",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    Button(onClick = onLogout) {
+                        Text("Logout")
+                    }
                 }
 
-                items(filteredFilms) { (filmId, film) ->
-                    val currentStatus = userStatuses[filmId].orEmpty()
+                item {
+                    Button(
+                        onClick = {
+                            showOnlyMyStatuses = !showOnlyMyStatuses
+                            if (showOnlyMyStatuses) {
+                                selectedUniverseId = null
+                            }
+                        }
+                    ) {
+                        Text(if (showOnlyMyStatuses) "Back to universes" else "My statuses")
+                    }
+                }
 
-                    Card {
+                if (!showOnlyMyStatuses) {
+                    item {
                         Text(
-                            text = film.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp)
+                            text = "Universes",
+                            style = MaterialTheme.typography.headlineMedium
                         )
+                    }
 
+                    items(universes) { (universeId, universe) ->
+                        Card(
+                            modifier = Modifier.clickable {
+                                selectedUniverseId = universeId
+                                showOnlyMyStatuses = false
+                            }
+                        ) {
+                            Text(
+                                text = universe.name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (showOnlyMyStatuses || selectedUniverseId != null) {
+                    item {
                         Text(
-                            text = if (currentStatus.isNotBlank()) {
-                                "Current status: $currentStatus"
-                            } else {
-                                "Current status: none"
-                            },
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                            text = if (showOnlyMyStatuses) "My films" else "Films",
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
+                    }
 
-                        Button(
-                            onClick = { onOpenFilmDetail(filmId) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            Text("View details")
-                        }
+                    items(filteredFilms) { (filmId, film) ->
+                        val currentStatus = userStatuses[filmId].orEmpty()
 
-                        Button(
-                            onClick = { saveFilmStatus(filmId, "watched") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            Text("Watched")
-                        }
+                        Card {
+                            Text(
+                                text = film.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp)
+                            )
 
-                        Button(
-                            onClick = { saveFilmStatus(filmId, "want_to_watch") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            Text("Want to watch")
-                        }
+                            Text(
+                                text = if (currentStatus.isNotBlank()) {
+                                    "Current status: $currentStatus"
+                                } else {
+                                    "Current status: none"
+                                },
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                            )
 
-                        Button(
-                            onClick = { saveFilmStatus(filmId, "own_dvd") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            Text("Own DVD")
-                        }
+                            Button(
+                                onClick = { onOpenFilmDetail(filmId) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
+                                Text("View details")
+                            }
 
-                        Button(
-                            onClick = { saveFilmStatus(filmId, "want_to_get_rid") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            Text("Want to get rid")
-                        }
+                            Button(
+                                onClick = { saveFilmStatus(filmId, "watched") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
+                                Text("Watched")
+                            }
 
-                        Button(
-                            onClick = { deleteFilmStatus(filmId) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
-                        ) {
-                            Text("Delete my status")
+                            Button(
+                                onClick = { saveFilmStatus(filmId, "want_to_watch") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
+                                Text("Want to watch")
+                            }
+
+                            Button(
+                                onClick = { saveFilmStatus(filmId, "own_dvd") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
+                                Text("Own DVD")
+                            }
+
+                            Button(
+                                onClick = { saveFilmStatus(filmId, "want_to_get_rid") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
+                                Text("Want to get rid")
+                            }
+
+                            Button(
+                                onClick = { deleteFilmStatus(filmId) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
+                            ) {
+                                Text("Delete my status")
+                            }
                         }
                     }
                 }
