@@ -2,10 +2,15 @@ package fr.isen.sahartayssir.waltdisney.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Palette Midnight Apple
+val AppleBlack = Color(0xFF000000)
+val AppleDarkGrey = Color(0xFF1C1C1E)
+val AppleMediumGrey = Color(0xFF2C2C2E)
+val AppleLightGrey = Color(0xFF3A3A3C)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val AppleWhite = Color(0xFFFFFFFF)
+val AppleSilver = Color(0xFFE5E5EA)
+val AppleSystemGrey = Color(0xFF8E8E93)
+
+// Accents (Optionnel)
+val AppleBlue = Color(0xFF0A84FF)
