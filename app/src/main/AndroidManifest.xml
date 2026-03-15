@@ -13,8 +13,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Waltdisney"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
-
 
         <activity android:name=".FilmDetailActivity" />
         <activity android:name=".ProfileActivity" />

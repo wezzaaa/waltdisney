@@ -23,17 +23,48 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.ImageLoader
 import coil.compose.AsyncImage
-import com.google.firebase.FirebaseApp
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import fr.isen.sahartayssir.waltdisney.models.Film
 import fr.isen.sahartayssir.waltdisney.models.Universe
 import fr.isen.sahartayssir.waltdisney.ui.theme.*
+import okhttp3.OkHttpClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ✅ Configuration Coil avec User-Agent pour charger les images externes
+        val imageLoader = ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(this.cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02)
+                    .build()
+            }
+            .okHttpClient {
+                OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        val request = chain.request().newBuilder()
+                            .header("User-Agent", "Mozilla/5.0 (Android)")
+                            .header("Referer", "https://www.themoviedb.org/")
+                            .build()
+                        chain.proceed(request)
+                    }
+                    .build()
+            }
+            .build()
+
+        coil.Coil.setImageLoader(imageLoader)
 
         val app = com.google.firebase.FirebaseApp.getInstance()
         val databaseUrl = "https://walt-disney-708e2-default-rtdb.europe-west1.firebasedatabase.app"
@@ -51,19 +82,14 @@ class MainActivity : ComponentActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     Log.d("HOME_DEBUG", ".info/connected EXPLICIT = ${snapshot.getValue(Boolean::class.java)}")
                 }
-
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("HOME_DEBUG", ".info/connected EXPLICIT cancelled: ${error.message}", error.toException())
                 }
             })
 
         dbTest.child("testConnection").setValue("ok")
-            .addOnSuccessListener {
-                Log.d("HOME_DEBUG", "Écriture test EXPLICIT OK")
-            }
-            .addOnFailureListener {
-                Log.e("HOME_DEBUG", "Écriture test EXPLICIT KO: ${it.message}", it)
-            }
+            .addOnSuccessListener { Log.d("HOME_DEBUG", "Écriture test EXPLICIT OK") }
+            .addOnFailureListener { Log.e("HOME_DEBUG", "Écriture test EXPLICIT KO: ${it.message}", it) }
 
         setContent {
             WaltdisneyTheme {
@@ -114,22 +140,17 @@ fun HomeScreen(
                 }
                 Log.d("HOME_DEBUG", "userStatuses chargés = ${userStatuses.size}")
             }
-
             override fun onCancelled(error: DatabaseError) {
                 Log.e("HOME_DEBUG", "userStatuses cancelled: ${error.message}", error.toException())
             }
         }
 
         ref?.addValueEventListener(listener)
-
-        onDispose {
-            ref?.removeEventListener(listener)
-        }
+        onDispose { ref?.removeEventListener(listener) }
     }
 
     LaunchedEffect(Unit) {
         isLoading = true
-
         Log.d("HOME_DEBUG", "====================")
         Log.d("HOME_DEBUG", "HomeScreen lancé")
         Log.d("HOME_DEBUG", "uid = $uid")
@@ -140,80 +161,27 @@ fun HomeScreen(
             return@LaunchedEffect
         }
 
-        val userDisplayNameRef = db.child("users").child(uid).child("displayName")
-        Log.d("HOME_DEBUG", "Lecture displayName demarree")
-
-        userDisplayNameRef.get()
+        db.child("users").child(uid).child("displayName").get()
             .addOnCompleteListener { task ->
-                Log.d("HOME_DEBUG", "displayName onComplete")
-                Log.d("HOME_DEBUG", "displayName isComplete = ${task.isComplete}")
-                Log.d("HOME_DEBUG", "displayName isSuccessful = ${task.isSuccessful}")
-                Log.d("HOME_DEBUG", "displayName exception = ${task.exception?.message}")
+                if (!task.isSuccessful) { isLoading = false; return@addOnCompleteListener }
+                displayName = task.result.getValue(String::class.java).orEmpty()
 
-                if (!task.isSuccessful) {
-                    Log.e("HOME_DEBUG", "Échec displayName", task.exception)
-                    isLoading = false
-                    return@addOnCompleteListener
-                }
-
-                val snap = task.result
-                Log.d("HOME_DEBUG", "displayName exists = ${snap.exists()}")
-                Log.d("HOME_DEBUG", "displayName value = ${snap.getValue(String::class.java)}")
-
-                displayName = snap.getValue(String::class.java).orEmpty()
-
-                val profilePicRef = db.child("users").child(uid).child("profilePic")
-                Log.d("HOME_DEBUG", "Lecture profilePic demarrer")
-
-                profilePicRef.get()
+                db.child("users").child(uid).child("profilePic").get()
                     .addOnCompleteListener { picTask ->
-                        Log.d("HOME_DEBUG", "profilePic onComplete")
-                        Log.d("HOME_DEBUG", "profilePic isSuccessful = ${picTask.isSuccessful}")
-                        Log.d("HOME_DEBUG", "profilePic exception = ${picTask.exception?.message}")
+                        if (!picTask.isSuccessful) { isLoading = false; return@addOnCompleteListener }
+                        profilePic = picTask.result.getValue(String::class.java).orEmpty()
 
-                        if (!picTask.isSuccessful) {
-                            Log.e("HOME_DEBUG", "Échec profilePic", picTask.exception)
-                            isLoading = false
-                            return@addOnCompleteListener
-                        }
-
-                        val picSnap = picTask.result
-                        Log.d("HOME_DEBUG", "profilePic exists = ${picSnap.exists()}")
-                        Log.d("HOME_DEBUG", "profilePic value = ${picSnap.getValue(String::class.java)}")
-
-                        profilePic = picSnap.getValue(String::class.java).orEmpty()
-
-                        val universesRef = db.child("universes")
-                        Log.d("HOME_DEBUG", "Lecture universes démarrée")
-
-                        universesRef.get()
+                        db.child("universes").get()
                             .addOnCompleteListener { uniTask ->
-                                Log.d("HOME_DEBUG", "universes onComplete")
-                                Log.d("HOME_DEBUG", "universes isSuccessful = ${uniTask.isSuccessful}")
-                                Log.d("HOME_DEBUG", "universes exception = ${uniTask.exception?.message}")
-
-                                if (!uniTask.isSuccessful) {
-                                    Log.e("HOME_DEBUG", "Échec universes", uniTask.exception)
-                                    isLoading = false
-                                    return@addOnCompleteListener
-                                }
-
-                                val uniSnap = uniTask.result
-                                Log.d("HOME_DEBUG", "universes childrenCount = ${uniSnap.childrenCount}")
+                                if (!uniTask.isSuccessful) { isLoading = false; return@addOnCompleteListener }
 
                                 try {
-                                    universes = uniSnap.children.mapNotNull { child ->
-                                        val key = child.key
-                                        Log.d("HOME_DEBUG", "Universe child key = $key")
-
-                                        if (key == null) return@mapNotNull null
-
+                                    universes = uniTask.result.children.mapNotNull { child ->
+                                        val key = child.key ?: return@mapNotNull null
                                         val universe = child.getValue(Universe::class.java)
                                         Log.d("HOME_DEBUG", "Universe parsed = $universe")
-
                                         if (universe == null) null else key to universe
                                     }
-
                                     Log.d("HOME_DEBUG", "universes parsés = ${universes.size}")
                                 } catch (e: Exception) {
                                     Log.e("HOME_DEBUG", "Exception parsing universes", e)
@@ -221,39 +189,18 @@ fun HomeScreen(
                                     return@addOnCompleteListener
                                 }
 
-                                val filmsRef = db.child("films")
-                                Log.d("HOME_DEBUG", "Lecture films demarrer")
-
-                                filmsRef.get()
-                                    .addOnCompleteListener { filmTask ->
-                                        Log.d("HOME_DEBUG", "films onComplete")
-                                        Log.d("HOME_DEBUG", "films isSuccessful = ${filmTask.isSuccessful}")
-                                        Log.d("HOME_DEBUG", "films exception = ${filmTask.exception?.message}")
-
-                                        if (!filmTask.isSuccessful) {
-                                            Log.e("HOME_DEBUG", "Échec films", filmTask.exception)
-                                            isLoading = false
-                                            return@addOnCompleteListener
-                                        }
-
-                                        val filmSnap = filmTask.result
-                                        Log.d("HOME_DEBUG", "films childrenCount = ${filmSnap.childrenCount}")
+                                db.child("films").get()
+                                    .addOnCompleteListener { filmsTask ->
+                                        if (!filmsTask.isSuccessful) { isLoading = false; return@addOnCompleteListener }
 
                                         try {
-                                            films = filmSnap.children.mapNotNull { child ->
-                                                val key = child.key
-                                                Log.d("HOME_DEBUG", "Film child key = $key")
-
-                                                if (key == null) return@mapNotNull null
-
+                                            films = filmsTask.result.children.mapNotNull { child ->
+                                                val key = child.key ?: return@mapNotNull null
                                                 val film = child.getValue(Film::class.java)
                                                 Log.d("HOME_DEBUG", "Film parsed = $film")
-
                                                 if (film == null) null else key to film
                                             }
-
                                             Log.d("HOME_DEBUG", "films parsés = ${films.size}")
-                                            Log.d("HOME_DEBUG", "Chargement terminé OK")
                                             isLoading = false
                                         } catch (e: Exception) {
                                             Log.e("HOME_DEBUG", "Exception parsing films", e)
@@ -292,9 +239,7 @@ fun HomeScreen(
                         showOnlyMyStatuses = false
                         selectedUniverseId = null
                     }
-
                     Spacer(Modifier.width(16.dp))
-
                     MagicTab("Ma Liste ✨", showOnlyMyStatuses) {
                         showOnlyMyStatuses = true
                     }
@@ -342,7 +287,7 @@ fun HeaderMagic(name: String, pic: String, onProf: () -> Unit, onLog: () -> Unit
     ) {
         Column {
             Text(
-                ".",
+                "Magie Disney,",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 14.sp
             )
@@ -367,7 +312,6 @@ fun HeaderMagic(name: String, pic: String, onProf: () -> Unit, onLog: () -> Unit
                     contentScale = ContentScale.Crop
                 )
             }
-
             IconButton(onClick = onLog) {
                 Icon(Icons.Default.ExitToApp, contentDescription = null, tint = MagicPink)
             }
@@ -387,7 +331,6 @@ fun MagicTab(text: String, selected: Boolean, onClick: () -> Unit) {
             color = if (selected) Color.White else Color.White.copy(alpha = 0.4f),
             fontWeight = FontWeight.Bold
         )
-
         if (selected) {
             Box(
                 Modifier
@@ -433,7 +376,7 @@ fun FilmMagicCard(film: Film, status: String, onClick: () -> Unit) {
             ) {
                 AsyncImage(
                     model = film.imageUrl,
-                    contentDescription = null,
+                    contentDescription = film.title,
                     contentScale = ContentScale.Crop
                 )
             }
@@ -447,7 +390,6 @@ fun FilmMagicCard(film: Film, status: String, onClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
-
                 if (status.isNotBlank()) {
                     Text(
                         status.uppercase().replace("_", " "),
