@@ -3,27 +3,24 @@ package fr.isen.sahartayssir.waltdisney.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = AppleWhite,           // Texte et éléments importants en blanc
-    secondary = AppleSystemGrey,    // Éléments secondaires
-    background = AppleBlack,        // Fond noir pur immersif
-    surface = AppleDarkGrey,        // Cartes et surfaces
-    onPrimary = AppleBlack,
-    onSecondary = AppleWhite,
-    onBackground = AppleWhite,
-    onSurface = AppleWhite,
-    surfaceVariant = AppleMediumGrey // Pour les champs de saisie ou séparateurs
+private val MagicColorScheme = darkColorScheme(
+    primary = Color.White,
+    secondary = MagicCyan,
+    background = MagicDeepPurple,
+    surface = GlassWhite
+)
+
+val MysticalGradient = Brush.verticalGradient(
+    colors = listOf(MagicDeepPurple, Color(0xFF0A061E), MagicPink.copy(alpha = 0.3f))
 )
 
 @Composable
-fun WaltdisneyTheme(
-    // On ignore le paramètre darkTheme pour forcer le style Cinéma
-    content: @Composable () -> Unit
-) {
+fun WaltdisneyTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = MagicColorScheme,
         typography = Typography,
         content = content
     )
